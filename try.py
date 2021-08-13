@@ -600,7 +600,7 @@ def main():
                                      height=250)
                     except:
                         results = "Okay, we know you've worked hard for it.. Let's get through this!"
-                        # st.warning(results)
+                        st.warning(results)
                         # st.info("Here's our recommendation for the same :)")
 
                         result_df = search_term_if_not_found_project(search_term, df, num_of_rec)
@@ -634,7 +634,7 @@ def main():
                                      height=250)
                     except:
                         results = "Okay, we know you've worked hard for it.. Let's get through this!"
-                        # st.warning(results)
+                        st.warning(results)
                         # st.info("Here's our recommendation for the same :)")
 
                         result_df = search_term_if_not_found_project(search_term, df, num_of_rec)
