@@ -3,11 +3,13 @@ import streamlit.components.v1 as stc
 
 #load EDA
 import pandas as pd
+import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity,linear_kernel
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MinMaxScaler
+# from fuzzywuzzy import process
 
 
 #Load our Dataset:
@@ -54,67 +56,38 @@ def get_recommendation(title, cosine_sim_mat, df,num_of_rec=10):
 
     return final_rec_course.head(num_of_rec)
 
-#K MEAREST NEIGHBOR
-@st.cache
-def get_recommendationKNN(title, cosine_sim_mat, df,num_of_rec=10):
+# #K MEAREST NEIGHBOR
+# @st.cache
+# def get_recommendationKNN(title, df,model,num_of_rec=10):
+#
+#
+#
+#     model.fit(mainframe)
+#     idx=process.extract0ne
+#     distances, indices=model.kneighbors(df[idx],n_neighbors=num_of_rec)
+#     for i in indices:
+#         final=mainframe[['Title', 'Link', 'Stars', 'Rating']]
+#     return final
 
-    #indices of the course
-    course_indices = pd.Series(df.index, index=df['Title']).drop_duplicates()
 
-    #index of the course
-    idx = course_indices[title]
 
-    #looking into cosine matrix for that index
-    sim_score= list(enumerate(cosine_sim_mat[idx]))
-    sim_score = sorted(sim_score, key=lambda x:x[1], reverse=True)
-    selected_course_indices=[i[0] for i in sim_score[1:]]
-    selected_course_scores = [i[0] for i in sim_score[1:]]
-    result_df =df.iloc[selected_course_indices]
-    result_df['similarity_score']=selected_course_scores
-    course_rec= result_df[['Title','similarity_score','Link', 'Stars', 'Rating']]
 
-    course_rec=csr_matrix(course_rec.values)
-    model_knn=NearestNeighbors(metric='cosine',algorithm='brute')
-    final_rec_course= model_knn.fit(course_rec)
-    return final_rec_course.head(num_of_rec)
+
 
 
 #WEIGHTED AVERAGE
 @st.cache
-def get_recommendationWA(title, cosine_sim_mat, df,num_of_rec=10):
-    # indices of the course
-    course_indices = pd.Series(df.index, index=df['Title']).drop_duplicates()
+def get_recommendationWA(title, df,num_of_rec=10):
 
-    # index of the course
-    idx = course_indices[title]
-
-    # looking into cosine matrix for that index
-    sim_score = list(enumerate(cosine_sim_mat[idx]))
-    sim_score = sorted(sim_score, key=lambda x: x[1], reverse=True)
-    selected_course_indices = [i[0] for i in sim_score[1:]]
-    selected_course_scores = [i[0] for i in sim_score[1:]]
-    result_df = df.iloc[selected_course_indices]
-    result_df['similarity_score'] = selected_course_scores
-    mainframe = result_df[['Title', 'similarity_score', 'Link', 'Stars', 'Rating']]
+    mainframe =df[['Title', 'Link', 'Stars', 'Rating']]
 
     v=mainframe['Rating']
-    R=mainframe['similarity_score']
-    C=mainframe['similarity_score'].mean()
+    R=mainframe['Stars']
+    C=mainframe['Stars'].mean()
     m=mainframe['Rating'].quantile(0.70)
     mainframe['Weighted Average']=(R*v)+(C*m)/(v+m)
-    mainframe=df.iloc[mainframe]
-    mainframe=result_df[['Title', 'similarity_score', 'Link', 'Stars', 'Rating']]
-    # rec_course=mainframe[['Title', 'weighted_average','similarity_score', 'Link', 'Stars', 'Rating']]
-
-    # scaling=MinMaxScaler
-    # course_scaled=scaling.fit_transform(mainframe['Weighted_Average','similarity_score'])
-    # course_normalized=pd.DataFrame(course_scaled,columns=['Weighted_Average','similarity_score'])
-    # mainframe['normalized_weight_average','normalized_similarity']=course_normalized
-    #
-    # mainframe['score']=mainframe['normalized_weight_average']*0.5 + mainframe['normalized_similarity'] * 0.5
-    # course_scored_df = mainframe.sort_values(['score'], ascending=False)
-    # final_rec_course = rec_course.sort_values('weighted_average', ascending=False)
-    final_rec_course=mainframe[['Title','weighted_average','Link', 'Stars', 'Rating']]
+    sorted_course=mainframe.sort_values('weighted_average',ascending=False)
+    final_rec_course=sorted_course[['Title','weighted_average','Link', 'Stars', 'Rating']]
 
     return final_rec_course.head(num_of_rec)
 
@@ -137,6 +110,7 @@ def search_term_if_not_foundWA(term,df,num_of_rec=10):
     C = mainframe['Stars'].mean()
     m = mainframe['Rating'].quantile(0.70)
     mainframe['Weighted Average'] = (R * v) + (C * m) / (v + m)
+    mainframe=mainframe[['Title','Weighted Average','Link', 'Stars', 'Rating']]
     final_rec_course = mainframe.sort_values('Weighted Average', ascending=False)
     return final_rec_course.head(num_of_rec)
 
@@ -147,6 +121,18 @@ box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
   border-left: 5px solid #6c6c6c;">
 <h4>{}</h4>
 <p style="color:blue;"><span style="color:black;">📈Score::</span>{}</p>
+<p style="color:blue;"><span style="color:black;">🔗</span><a href="{}",target="_blank">Link</a></p>
+<p style="color:blue;"><span style="color:black;">🎓Stars:</span>{}</p>
+<p style="color:blue;"><span style="color:black;">🧑Students:</span>{}</p>
+</div>
+"""
+
+RESULT_TEMPWA = """
+<div style="width:90%;height:100%;margin:1px;padding:5px;position:relative;border-radius:5px;border-bottom-right-radius: 60px;
+box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
+  border-left: 5px solid #6c6c6c;">
+<h4>{}</h4>
+<p style="color:blue;"><span style="color:black;">📈Weighted Average::</span>{}</p>
 <p style="color:blue;"><span style="color:black;">🔗</span><a href="{}",target="_blank">Link</a></p>
 <p style="color:blue;"><span style="color:black;">🎓Stars:</span>{}</p>
 <p style="color:blue;"><span style="color:black;">🧑Students:</span>{}</p>
@@ -203,7 +189,6 @@ box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
   border-left: 5px solid #6c6c6c;">
 <h4>{}</h4>
 <p style="color:blue;"><span style="color:black;">📈Score::</span>{}</p>
-
 <p style="color:blue;"><span style="color:black;">🎓Stars:</span>{}</p>
 <p style="color:blue;"><span style="color:black;">🧑Students:</span>{}</p>
 </div>
@@ -213,7 +198,6 @@ RESULT_TEMP_Cousera2 = """
 box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
   border-left: 5px solid #6c6c6c;">
 <h4>{}</h4>
-
 <p style="color:blue;"><span style="color:black;">🎓Stars:</span>{}</p>
 <p style="color:blue;"><span style="color:black;">🧑Students:</span>{}</p>
 </div>
@@ -254,10 +238,7 @@ RESULT_TEMP_project1 = """
 box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
   border-left: 5px solid #6c6c6c;">
 <h4>{}</h4>
-
 <p style="color:blue;"><span style="color:black;">🔗</span><a href="{}",target="_blank">Link</a></p>
-
-
 </div>
 """
 
@@ -268,8 +249,6 @@ box-shadow:0 0 15px 5px #ccc; background-color: #DDDDDD;
 <h4>{}</h4>
 <p style="color:blue;"><span style="color:black;">📈Score::</span>{}</p>
 <p style="color:blue;"><span style="color:black;">🔗</span><a href="{}",target="_blank">Link</a></p>
-
-
 </div>
 """
 
@@ -338,7 +317,7 @@ def main():
         #UDEMY
         if choice=="Udemy":
             st.subheader("Udemy Courses")
-            algorithm = ["Cosine Similarity","K Nearest","Weighted"]
+            algorithm = ["Cosine Similarity","Weighted Average"]
             choice = st.sidebar.selectbox("Optional algo's for nerds",algorithm)
 
             #COSINE SIMILARITY OUTPUT
@@ -374,55 +353,51 @@ def main():
                                 # st.write("Title",rec_title)
                                 stc.html(RESULT_TEMP1.format(rec_title, rec_link, rec_star, rec_rating),
                                          height=250)
-            #K NEAREST OUTPUT
-            elif choice=="K Nearest":
-                df = load_data("data/udemy_tech.csv")
-                cosine_sim_mat = vectorize_text_to_cosine_mat(df['Title'])
-                num_of_rec = st.sidebar.number_input("Number", 4, 30, 7)
-                if st.button("Recommend"):
-                    if search_term is not None:
-                        try:
-                            results = get_recommendation(search_term, cosine_sim_mat, df, num_of_rec)
-
-                            for i in range(0, len(distances.flatten())):
-                                if i == 0:
-                                    print('Recommendations for {0}:\n'.format(final_rec_course.index[query_index]))
-                                else:
-                                    print('{0}: {1}, with distance of {2}:'.format(i, movie_features_df.index[
-                                        indices.flatten()[i]], distances.flatten()[i]))
-                            for row in results.iterrows():
-                                rec_title = row[1][0]
-                                rec_score = row[1][1]
-                                rec_link = row[1][2]
-                                rec_star = row[1][3]
-                                rec_rating = row[1][4]
-                                # st.write("Title",rec_title)
-                                stc.html(RESULT_TEMP.format(rec_title, rec_score, rec_link, rec_star, rec_rating),
-                                         height=250)
-                        except:
-                            results = "Hmm seems like you are searching through domains"
-                            st.warning(results)
-                            st.info("Here's our recommendation for the same :)")
-
-                            result_df = search_term_if_not_found(search_term, df, num_of_rec)
-                            # st.dataframe(result_df)
-                            for row in result_df.iterrows():
-                                rec_title = row[1][0]
-                                rec_link = row[1][1]
-                                rec_star = row[1][2]
-                                rec_rating = row[1][3]
-                                # st.write("Title",rec_title)
-                                stc.html(RESULT_TEMP1.format(rec_title, rec_link, rec_star, rec_rating),
-                                         height=250)
+            # #K NEAREST OUTPUT
+            # elif choice=="K Nearest":
+            #     df = load_data("data/udemy_tech.csv")
+            #     num_of_rec = st.sidebar.number_input("Number", 4, 30, 7)
+            #     if st.button("Recommend"):
+            #         if search_term is not None:
+            #             try:
+            #                 mainframe = df[['Title', 'Link', 'Stars', 'Rating']]
+            #                 students = mainframe.pivot(index='title', columns='Ratings', values='Stars').fillna(0)
+            #                 mat_course = csr_matrix(students.values)
+            #                 model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=20)
+            #                 model_knn.fit(mat_course)
+            #                 results = get_recommendationKNN(search_term, df,model_knn, num_of_rec)
+            #                 for row in results.iterrows():
+            #                     rec_title = row[1][0]
+            #                     rec_score = row[1][1]
+            #                     rec_link = row[1][2]
+            #                     rec_star = row[1][3]
+            #                     rec_rating = row[1][4]
+            #                     # st.write("Title",rec_title)
+            #                     stc.html(RESULT_TEMP.format(rec_title, rec_score, rec_link, rec_star, rec_rating),
+            #                              height=250)
+            #             except:
+            #                 results = "Hmm seems like you are searching through domains"
+            #                 st.warning(results)
+            #                 st.info("Here's our recommendation for the same :)")
+            #
+            #                 result_df = search_term_if_not_found(search_term, df, num_of_rec)
+            #                 # st.dataframe(result_df)
+            #                 for row in result_df.iterrows():
+            #                     rec_title = row[1][0]
+            #                     rec_link = row[1][1]
+            #                     rec_star = row[1][2]
+            #                     rec_rating = row[1][3]
+            #                     # st.write("Title",rec_title)
+            #                     stc.html(RESULT_TEMP1.format(rec_title, rec_link, rec_star, rec_rating),
+            #                              height=250)
             #WEIGHTED AVERAGE
             else:
                     df = load_data("data/udemy_tech.csv")
-                    cosine_sim_mat = vectorize_text_to_cosine_mat(df['Title'])
                     num_of_rec = st.sidebar.number_input("Number", 4, 30, 7)
                     if st.button("Recommend"):
                         if search_term is not None:
                             try:
-                                results = get_recommendationWA(search_term, cosine_sim_mat, df, num_of_rec)
+                                results = get_recommendationWA(search_term, df, num_of_rec)
                                 for row in results.iterrows():
                                     rec_title = row[1][0]
                                     rec_score = row[1][1]
@@ -433,19 +408,18 @@ def main():
                                     stc.html(RESULT_TEMP.format(rec_title, rec_score, rec_link, rec_star, rec_rating),
                                              height=250)
                             except:
-                                results = "Hmm seems like you are searching through domains"
-                                st.warning(results)
-                                st.info("Here's our recommendation for the same :)")
+                                st.info("Here's our recommendation according to the weighted average algorithm :)")
 
                                 result_df = search_term_if_not_foundWA(search_term, df, num_of_rec)
                                 # st.dataframe(result_df)
                                 for row in result_df.iterrows():
                                     rec_title = row[1][0]
-                                    rec_link = row[1][1]
-                                    rec_star = row[1][2]
-                                    rec_rating = row[1][3]
+                                    rec_score=row[1][1]
+                                    rec_link = row[1][2]
+                                    rec_star = row[1][3]
+                                    rec_rating = row[1][4]
                                     # st.write("Title",rec_title)
-                                    stc.html(RESULT_TEMP1.format(rec_title, rec_link, rec_star, rec_rating),
+                                    stc.html(RESULT_TEMPWA.format(rec_title,rec_score, rec_link, rec_star, rec_rating),
                                              height=250)
 
 
@@ -519,9 +493,8 @@ def main():
                             stc.html(RESULT_TEMP_project2.format(rec_title, rec_score, rec_link),
                                      height=250)
                     except:
-                        results = "Hmm seems like you are searching through domains"
+                        results = "Yaay!, you finally decided to level up your game. Here are the best project recommendations for the same"
                         st.warning(results)
-                        st.info("Here's our recommendation for the same :)")
 
                         result_df = search_term_if_not_found_project(search_term, df, num_of_rec)
                         # st.dataframe(result_df)
@@ -551,9 +524,8 @@ def main():
                             stc.html(RESULT_TEMP_project2.format(rec_title, rec_score, rec_link, rec_star, rec_rating),
                                      height=250)
                     except:
-                        results = "Hmm seems like you are searching through domains"
+                        results = "Yaay!, you finally decided to level up your game. Here are the best project recommendations for the same"
                         st.warning(results)
-                        st.info("Here's our recommendation for the same :)")
 
                         result_df = search_term_if_not_found_project(search_term, df, num_of_rec)
                         # st.dataframe(result_df)
@@ -584,9 +556,9 @@ def main():
                                                                          rec_rating),
                                              height=250)
                             except:
-                                results = "Hmm seems like you are searching through domains"
+                                results = "Yaay!, you finally decided to level up your game. Here are the best project recommendations for the same"
                                 st.warning(results)
-                                st.info("Here's our recommendation for the same :)")
+
 
                                 result_df = search_term_if_not_found_project(search_term, df, num_of_rec)
                                 # st.dataframe(result_df)
@@ -627,7 +599,7 @@ def main():
                                                                  rec_rating),
                                      height=250)
                     except:
-                        # results = "Hmm seems like you are searching through domains"
+                        results = "Okay, we know you've worked hard for it.. Let's get through this!"
                         # st.warning(results)
                         # st.info("Here's our recommendation for the same :)")
 
@@ -661,7 +633,7 @@ def main():
                                                                  rec_rating),
                                      height=250)
                     except:
-                        # results = "Hmm seems like you are searching through domains"
+                        results = "Okay, we know you've worked hard for it.. Let's get through this!"
                         # st.warning(results)
                         # st.info("Here's our recommendation for the same :)")
 
